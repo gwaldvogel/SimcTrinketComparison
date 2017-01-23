@@ -1,7 +1,7 @@
-local _, Simulationcraft = ...
+local _, SimcTrinketComparison = ...
 
 -- Artifact lookup
-Simulationcraft.ArtifactTable = {
+SimcTrinketComparison.ArtifactTable = {
 	-- Death Knight
 	[128402] = 15,
 	[128292] = 12,
@@ -53,7 +53,7 @@ Simulationcraft.ArtifactTable = {
 }
 
 -- regionID lookup
-Simulationcraft.RegionString = {
+SimcTrinketComparison.RegionString = {
   [1] = 'us',
   [2] = 'kr',
   [3] = 'eu',
@@ -62,7 +62,7 @@ Simulationcraft.RegionString = {
 }
 
 -- non-localized profession names from ids
-Simulationcraft.ProfNames = {
+SimcTrinketComparison.ProfNames = {
   [129] = 'First Aid',
   [164] = 'Blacksmithing',
   [165] = 'Leatherworking',
@@ -81,7 +81,7 @@ Simulationcraft.ProfNames = {
 }
 
 -- non-localized spec names from spec ids
-Simulationcraft.SpecNames = {
+SimcTrinketComparison.SpecNames = {
 -- Death Knight
   [250] = 'Blood',
   [251] = 'Frost',
@@ -134,12 +134,12 @@ Simulationcraft.SpecNames = {
 
 -- slot name conversion stuff
 
-Simulationcraft.slotNames = {"HeadSlot", "NeckSlot", "ShoulderSlot", "BackSlot", "ChestSlot", "ShirtSlot", "TabardSlot", "WristSlot", "HandsSlot", "WaistSlot", "LegsSlot", "FeetSlot", "Finger0Slot", "Finger1Slot", "Trinket0Slot", "Trinket1Slot", "MainHandSlot", "SecondaryHandSlot", "AmmoSlot" };    
-Simulationcraft.simcSlotNames = {'head','neck','shoulder','back','chest','shirt','tabard','wrist','hands','waist','legs','feet','finger1','finger2','trinket1','trinket2','main_hand','off_hand','ammo'}
+SimcTrinketComparison.slotNames = {"HeadSlot", "NeckSlot", "ShoulderSlot", "BackSlot", "ChestSlot", "ShirtSlot", "TabardSlot", "WristSlot", "HandsSlot", "WaistSlot", "LegsSlot", "FeetSlot", "Finger0Slot", "Finger1Slot", "Trinket0Slot", "Trinket1Slot", "MainHandSlot", "SecondaryHandSlot", "AmmoSlot" };    
+SimcTrinketComparison.simcSlotNames = {'head','neck','shoulder','back','chest','shirt','tabard','wrist','hands','waist','legs','feet','finger1','finger2','trinket1','trinket2','main_hand','off_hand','ammo'}
 
 -- table for conversion to upgrade level, stolen from AMR (<3)
 
-Simulationcraft.upgradeTable = {
+SimcTrinketComparison.upgradeTable = {
   [0]   =  0,
   [1]   =  1, -- 1/1 -> 8
   [373] =  1, -- 1/2 -> 4

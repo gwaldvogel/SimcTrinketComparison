@@ -1,5 +1,5 @@
 <Ui xsi:schemaLocation="http://www.blizzard.com/wow/ui/ ..\FrameXML\UI.xsd">
-  <GameTooltip name="SimulationcraftTooltip" frameStrata="TOOLTIP" hidden="true" parent="UIParent" inherits="GameTooltipTemplate"/>
+  <GameTooltip name="SimcTrinketComparisonTooltip" frameStrata="TOOLTIP" hidden="true" parent="UIParent" inherits="GameTooltipTemplate"/>
 
   <Frame name="SimcCopyFrame" parent="UIParent" movable="true" enableMouse="true" inherits="DialogBoxFrame">
   <Size>
