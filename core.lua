@@ -339,7 +339,15 @@ function SimcTrinketComparison:PrintSimcProfile()
   local playerArtifact = self:GetArtifactString()
 
   -- Build the output string for the player (not including gear)
-  local simulationcraftProfile = player .. '\n'
+  local simulationcraftProfile = '###########################################################################################\n'
+  simulationcraftProfile = simulationcraftProfile .. '# ATTENTION:\n'
+  simulationcraftProfile = simulationcraftProfile .. '# In order to increase performance the following line disables calculating scaling factors.\n'
+  simulationcraftProfile = simulationcraftProfile .. '# If you wish to calculate them, remove this line.\n'
+  simulationcraftProfile = simulationcraftProfile .. '###########################################################################################\n'
+  simulationcraftProfile = simulationcraftProfile .. 'calculate_scale_factors=0\n'
+  simulationcraftProfile = simulationcraftProfile .. '###########################################################################################\n\n'
+  
+  simulationcraftProfile = simulationcraftProfile .. player .. '\n'
   simulationcraftProfile = simulationcraftProfile .. playerLevel .. '\n'
   simulationcraftProfile = simulationcraftProfile .. playerRace .. '\n'
   simulationcraftProfile = simulationcraftProfile .. playerRegion .. '\n'
