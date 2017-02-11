@@ -28,13 +28,17 @@ local profNames     = SimcTrinketComparison.ProfNames
 local regionString  = SimcTrinketComparison.RegionString
 local artifactTable = SimcTrinketComparison.ArtifactTable
 
+-- TODO: this is quick and dirty, do it 
+local RING_MODE = false
+
 -- Most of the guts of this addon were based on a variety of other ones, including
 -- Statslog, AskMrRobot, and BonusScanner. And a bunch of hacking around with AceGUI.
 -- Many thanks to the authors of those addons, and to reia for fixing my awful amateur
 -- coding mistakes regarding objects and namespaces.
 
 function SimcTrinketComparison:OnInitialize()
-  SimcTrinketComparison:RegisterChatCommand('simct', 'PrintSimcProfile')
+  SimcTrinketComparison:RegisterChatCommand('simct', 'PrintTrinketComparison')
+  SimcTrinketComparison:RegisterChatCommand('simcr', 'PrintRingComparison')
 end
 
 function SimcTrinketComparison:OnEnable()
@@ -271,8 +275,16 @@ function SimcTrinketComparison:GetItemStrings()
   return items
 end
 
+function SimcTrinketComparison:PrintTrinketComparison()
+  SimcTrinketComparison:PrintSimcProfile('Trinket', 'trinket', 'INVTYPE_TRINKET')
+end
+
+function SimcTrinketComparison:PrintRingComparison()
+  SimcTrinketComparison:PrintSimcProfile('Finger', 'finger', 'INVTYPE_FINGER')
+end
+
 -- This is the workhorse function that constructs the profile
-function SimcTrinketComparison:PrintSimcProfile()
+function SimcTrinketComparison:PrintSimcProfile(slotName, simcSlotName, equipFilter)
   -- Basic player info
   local playerName = UnitName('player')
   local _, playerClass = UnitClass('player')
@@ -376,6 +388,7 @@ local trinkets = {}
 local trinketNames = {}
 local trinketsUsed = {}
 local a = 1
+
 simulationcraftProfile = string.gsub(simulationcraftProfile, UnitName('player'), 'CurrentlyEquipped')
 for bag=0, NUM_BAG_SLOTS do
   for bagSlots=1, GetContainerNumSlots(bag) do
@@ -383,7 +396,9 @@ for bag=0, NUM_BAG_SLOTS do
     local itemId = GetContainerItemID(bag, bagSlots)
     if (itemlink) then
       local name, link, quality, iLevel, reqLevel, class, subclass, maxStack, equipSlot, texture, vendorPrice = GetItemInfo(itemlink)
-      if equipSlot == 'INVTYPE_TRINKET' then
+      
+
+      if equipSlot == equipFilter then
         trinkets[a] = '=,id=' .. itemId
 		trinketNames[a] = string.gsub(name, ' ', '') .. iLevel
 		trinketsUsed[a] = {}
@@ -432,52 +447,53 @@ for bag=0, NUM_BAG_SLOTS do
 end --close bags loop
 
 for i=0,1 do
-  local itemlink = GetInventoryItemLink("player", GetInventorySlotInfo("Trinket"..i.."Slot"))
-  local itemId = GetInventoryItemID("player", GetInventorySlotInfo("Trinket"..i.."Slot"))
+  local itemlink = GetInventoryItemLink("player", GetInventorySlotInfo(slotName..i.."Slot"))
+  local itemId = GetInventoryItemID("player", GetInventorySlotInfo(slotName..i.."Slot"))
+  
   if (itemlink) then
     local name, link, quality, iLevel, reqLevel, class, subclass, maxStack, equipSlot, texture, vendorPrice = GetItemInfo(itemlink)
-    if equipSlot == 'INVTYPE_TRINKET' then
+    if equipSlot == equipFilter then
 	  trinkets[a] = '=,id=' .. itemId
 	  trinketNames[a] = string.gsub(name, ' ', '') .. iLevel
 	  
-      local itemString = string.match(itemlink, "item:([%-?%d:]+)")
-      local itemSplit = {}
-      local simcItemOptions = {}
+    local itemString = string.match(itemlink, "item:([%-?%d:]+)")
+    local itemSplit = {}
+    local simcItemOptions = {}
 
-      -- Split data into a table
-      for v in string.gmatch(itemString, "(%d*:?)") do
-        if v == ":" then
-          itemSplit[#itemSplit + 1] = 0
-        else
-          itemSplit[#itemSplit + 1] = string.gsub(v, ':', '')
-        end
-      end
-
-      local bonuses = {}
-
-      for index=1, tonumber(itemSplit[OFFSET_BONUS_ID]) do
-        bonuses[#bonuses + 1] = itemSplit[OFFSET_BONUS_ID + index]
-      end
-
-      if #bonuses > 0 then
-        trinkets[a] = trinkets[a] .. ',bonus_id=' .. table.concat(bonuses, '/')
-      end
-
-      -- Gems
-      local gems = {}
-      for i=1, 4 do -- hardcoded here to just grab all 4 sockets
-        local _,gemLink = GetItemGem(itemlink, i)
-        if gemLink then
-          local gemDetail = string.match(gemLink, "item[%-?%d:]+")
-          gems[#gems + 1] = string.match(gemDetail, "item:(%d+):" )
-        elseif flags == 256 then
-          gems[#gems + 1] = "0"
-        end
-      end
-      if #gems > 0 then
-        trinkets[a] = trinkets[a] .. ',gem_id=' .. table.concat(gems, '/')
+    -- Split data into a table
+    for v in string.gmatch(itemString, "(%d*:?)") do
+      if v == ":" then
+        itemSplit[#itemSplit + 1] = 0
+      else
+        itemSplit[#itemSplit + 1] = string.gsub(v, ':', '')
       end
     end
+
+    local bonuses = {}
+
+    for index=1, tonumber(itemSplit[OFFSET_BONUS_ID]) do
+      bonuses[#bonuses + 1] = itemSplit[OFFSET_BONUS_ID + index]
+    end
+
+    if #bonuses > 0 then
+      trinkets[a] = trinkets[a] .. ',bonus_id=' .. table.concat(bonuses, '/')
+    end
+
+    -- Gems
+    local gems = {}
+    for i=1, 4 do -- hardcoded here to just grab all 4 sockets
+      local _,gemLink = GetItemGem(itemlink, i)
+      if gemLink then
+        local gemDetail = string.match(gemLink, "item[%-?%d:]+")
+        gems[#gems + 1] = string.match(gemDetail, "item:(%d+):" )
+      elseif flags == 256 then
+        gems[#gems + 1] = "0"
+      end
+    end
+    if #gems > 0 then
+      trinkets[a] = trinkets[a] .. ',gem_id=' .. table.concat(gems, '/')
+    end
+  end
 	
 	if i == 0 then
 		
@@ -504,8 +520,8 @@ if a > 2 then
 			if trinketsUsed[b][c] == false and trinketsUsed[c][b] == false and trinketNames[c] ~= trinketNames[b] then
 				simulationcraftProfile = simulationcraftProfile .. '\n'
 				simulationcraftProfile = simulationcraftProfile .. 'copy=' .. trinketNames[b] .. '_' .. trinketNames[c] .. '\n'
-				simulationcraftProfile = simulationcraftProfile .. 'trinket1' .. trinkets[b] .. '\n'
-				simulationcraftProfile = simulationcraftProfile .. 'trinket2' .. trinkets[c] .. '\n'
+			  simulationcraftProfile = simulationcraftProfile .. simcSlotName .. '1' .. trinkets[b] .. '\n'
+			  simulationcraftProfile = simulationcraftProfile .. simcSlotName .. '2' .. trinkets[c] .. '\n'
 				trinketsUsed[b][c] = true
 				trinketsUsed[c][b] = true
 			end
