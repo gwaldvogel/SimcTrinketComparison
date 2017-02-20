@@ -398,7 +398,7 @@ for bag=0, NUM_BAG_SLOTS do
       local name, link, quality, iLevel, reqLevel, class, subclass, maxStack, equipSlot, texture, vendorPrice = GetItemInfo(itemlink)
       
 
-      if equipSlot == equipFilter then
+      if equipSlot == equipFilter and iLevel >= 800 then
         trinkets[a] = '=,id=' .. itemId
 		trinketNames[a] = string.gsub(name, ' ', '') .. iLevel
 		trinketsUsed[a] = {}
