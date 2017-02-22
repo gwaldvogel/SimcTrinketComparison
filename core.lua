@@ -283,16 +283,16 @@ function SimcTrinketComparison:PrintRingComparison()
   SimcTrinketComparison:PrintSimcProfile('Finger', 'finger', 'INVTYPE_FINGER')
 end
 
-function SimcTrinketComparison:GetItemInfo(itemId, itemLink, equipSlotFilter, iLevelFilter, indexOut, itemsOut, itemNamesOut, itemsUsedOut)
+function SimcTrinketComparison:GetItemInfo(itemId, itemLink, equipSlotFilter, iLevelFilter, indexOut)
+  local item = ''
+  local itemName = ''
   if (itemLink) then
     local name, link, quality, iLevel, reqLevel, class, subclass, maxStack, equipSlot, texture, vendorPrice = GetItemInfo(itemLink)
-    
     if equipSlot == equipSlotFilter and iLevel >= iLevelFilter then
-      itemsOut[indexOut] = '=,id=' .. itemId
-      itemNamesOut[indexOut] = string.gsub(name, ' ', '') .. iLevel
-      itemsUsedOut[indexOut] = {}
+      item = '=,id=' .. itemId
+      itemName = string.gsub(name, ' ', '') .. iLevel
 
-      local itemString = string.match(itemlink, "item:([%-?%d:]+)")
+      local itemString = string.match(itemLink, "item:([%-?%d:]+)")
       local itemSplit = {}
       local simcItemOptions = {}
 
@@ -312,13 +312,13 @@ function SimcTrinketComparison:GetItemInfo(itemId, itemLink, equipSlotFilter, iL
       end
 
       if #bonuses > 0 then
-        itemsOut[indexOut] = itemsOut[indexOut] .. ',bonus_id=' .. table.concat(bonuses, '/')
+        item = item .. ',bonus_id=' .. table.concat(bonuses, '/')
       end
 
       -- Gems
       local gems = {}
       for i=1, 4 do -- hardcoded here to just grab all 4 sockets
-        local _,gemLink = GetItemGem(itemlink, i)
+        local _,gemLink = GetItemGem(itemLink, i)
         if gemLink then
           local gemDetail = string.match(gemLink, "item[%-?%d:]+")
           gems[#gems + 1] = string.match(gemDetail, "item:(%d+):" )
@@ -327,12 +327,12 @@ function SimcTrinketComparison:GetItemInfo(itemId, itemLink, equipSlotFilter, iL
         end
       end
       if #gems > 0 then
-        itemsOut[indexOut] = itemsOut[indexOut] .. ',gem_id=' .. table.concat(gems, '/')
+        item = item .. ',gem_id=' .. table.concat(gems, '/')
       end
-      return indexOut + 1
+      return (indexOut + 1), item, itemName
     end
   else
-    return indexOut
+    return indexOut, item, itemName
   end --close if exists
 end
 
@@ -436,50 +436,67 @@ function SimcTrinketComparison:PrintSimcProfile(slotName, simcSlotName, equipFil
     end
   end
 
--- Item Comparison
-local items = {}
-local itemNames = {}
-local itemsUsed = {}
-local a = 1
+  -- Item Comparison
+  local items = {}
+  local itemNames = {}
+  local itemsUsed = {}
+  local a = 1
 
-simulationcraftProfile = string.gsub(simulationcraftProfile, UnitName('player'), 'CurrentlyEquipped') -- replace name of the player with CurrentlyEquipped
+  simulationcraftProfile = string.gsub(simulationcraftProfile, UnitName('player'), 'CurrentlyEquipped') -- replace name of the player with CurrentlyEquipped
 
-for bag=0, NUM_BAG_SLOTS do
-  for bagSlots=1, GetContainerNumSlots(bag) do
-    local itemlink = GetContainerItemLink(bag, bagSlots)
-    local itemId = GetContainerItemID(bag, bagSlots)
-    a = SimcTrinketComparison:GetItemInfo(itemId, itemLink, equipFilter, 800, a, items, itemNames, itemsUsed)
-  end -- close bagslots loop
-end --close bags loop
+  for bag=0, NUM_BAG_SLOTS do
+    for bagSlots=1, GetContainerNumSlots(bag) do
+      local itemLink = GetContainerItemLink(bag, bagSlots)
+      local itemId = GetContainerItemID(bag, bagSlots)
+      local indexOut, item, itemName = SimcTrinketComparison:GetItemInfo(itemId, itemLink, equipFilter, 800, a)
+      if (a + 1) == indexOut then
+        items[a] = item
+        itemNames[a] = itemName
+        itemsUsed[a] = {}
+        a = indexOut
+      end    
+    end -- close bagslots loop
+  end --close bags loop
 
-for i=0,1 do
-  local itemlink = GetInventoryItemLink("player", GetInventorySlotInfo(slotName..i.."Slot"))
-  local itemId = GetInventoryItemID("player", GetInventorySlotInfo(slotName..i.."Slot"))
-  a = SimcTrinketComparison:GetItemInfo(itemId, itemLink, equipFilter, 800, a, items, itemNames, itemsUsed)
-end
+  for i=0,1 do
+    local itemLink = GetInventoryItemLink("player", GetInventorySlotInfo(slotName..i.."Slot"))
+    local itemId = GetInventoryItemID("player", GetInventorySlotInfo(slotName..i.."Slot"))
+    local indexOut, item, itemName = SimcTrinketComparison:GetItemInfo(itemId, itemLink, equipFilter, 800, a)
+      if (a + 1) == indexOut then
+        items[a] = item
+        itemNames[a] = itemName
+        itemsUsed[a] = {}
+        if i == 1 then -- these are the two trinkets/rings that were equipped, mark the combination as already used
+          itemsUsed[a][(a - 1)] = true
+          itemsUsed[(a - 1)][a] = true
+        else
+          a = indexOut
+        end
+      end
+  end
 
-if a > 2 then
-	for b=1, a do
-		for c=1, a do
-			if itemsUsed[b][c] ~= true then
-				itemsUsed[b][c] = false
-			end
-		end
-	end
+  if a > 2 then
+  	for b=1, a do
+  		for c=1, a do
+  			if itemsUsed[b][c] ~= true then
+  				itemsUsed[b][c] = false
+  			end
+  		end
+  	end
 
-	for b=1, a do
-		for c=1, a do
-			if itemsUsed[b][c] == false and itemsUsed[c][b] == false and itemNames[c] ~= itemNames[b] then
-				simulationcraftProfile = simulationcraftProfile .. '\n'
-				simulationcraftProfile = simulationcraftProfile .. 'copy=' .. itemNames[b] .. '_' .. itemNames[c] .. '\n'
-			  simulationcraftProfile = simulationcraftProfile .. simcSlotName .. '1' .. items[b] .. '\n'
-			  simulationcraftProfile = simulationcraftProfile .. simcSlotName .. '2' .. items[c] .. '\n'
-				itemsUsed[b][c] = true
-				itemsUsed[c][b] = true
-			end
-		end
-	end
-end
+  	for b=1, a do
+  		for c=1, a do
+  			if itemsUsed[b][c] == false and itemsUsed[c][b] == false and itemNames[c] ~= itemNames[b] then
+  				simulationcraftProfile = simulationcraftProfile .. '\n'
+  				simulationcraftProfile = simulationcraftProfile .. 'copy=' .. itemNames[b] .. '_' .. itemNames[c] .. '\n'
+  			  simulationcraftProfile = simulationcraftProfile .. simcSlotName .. '1' .. items[b] .. '\n'
+  			  simulationcraftProfile = simulationcraftProfile .. simcSlotName .. '2' .. items[c] .. '\n'
+  				itemsUsed[b][c] = true
+  				itemsUsed[c][b] = true
+  			end
+  		end
+  	end
+  end
 
   -- sanity checks - if there's anything that makes the output completely invalid, punt!
   if specId == nil then
