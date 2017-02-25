@@ -21,6 +21,7 @@ local Timer               = _G.C_Timer
 
 -- load stuff from extras.lua
 local upgradeTable  = SimcTrinketComparison.upgradeTable
+local slotFilter    = SimcTrinketComparison.slotFilter
 local slotNames     = SimcTrinketComparison.slotNames
 local simcSlotNames = SimcTrinketComparison.simcSlotNames
 local specNames     = SimcTrinketComparison.SpecNames
@@ -36,9 +37,27 @@ local RING_MODE = false
 -- Many thanks to the authors of those addons, and to reia for fixing my awful amateur
 -- coding mistakes regarding objects and namespaces.
 
+StaticPopupDialogs['CONFIRM_BIB'] = {
+  text = 'Are you sure you want to generate a Best in Bags comparison profile? This feature is EXPERIMENTAL and NOT FULLY TESTED and if you have too many items in your bag it WILL MOST LIKELY CRASH WOW. Also this will not take into account the wearable legendary cap!',
+  button1 = 'Yes',
+  button2 = 'No',
+  OnAccept = function()
+    SimcTrinketComparison:PrintBiBComparison()
+  end,
+  timeout = 0,
+  whileDead = true,
+  hideOnEscape = true,
+  preferredIndex = 3,
+}
+
 function SimcTrinketComparison:OnInitialize()
   SimcTrinketComparison:RegisterChatCommand('simct', 'PrintTrinketComparison')
   SimcTrinketComparison:RegisterChatCommand('simcr', 'PrintRingComparison')
+  SimcTrinketComparison:RegisterChatCommand('simcbib', 'ConfirmBiB')
+end
+
+function SimcTrinketComparison:ConfirmBiB()
+  StaticPopup_Show('CONFIRM_BIB')
 end
 
 function SimcTrinketComparison:OnEnable()
@@ -288,7 +307,11 @@ function SimcTrinketComparison:GetItemInfo(itemId, itemLink, equipSlotFilter, iL
   local itemName = ''
   if (itemLink) then
     local name, link, quality, iLevel, reqLevel, class, subclass, maxStack, equipSlot, texture, vendorPrice = GetItemInfo(itemLink)
-    if equipSlot == equipSlotFilter and iLevel >= iLevelFilter then
+    local equipFilter = (equipSlot == equipSlotFilter)
+    if equipSlotFilter == 'none' then
+      equipFilter = true
+    end
+    if equipFilter and iLevel >= iLevelFilter then
       item = '=,id=' .. itemId
       itemName = string.gsub(name, ' ', '') .. iLevel
 
@@ -509,4 +532,400 @@ function SimcTrinketComparison:PrintSimcProfile(slotName, simcSlotName, equipFil
   SimcCopyFrameScrollText:Show()
   SimcCopyFrameScrollText:SetText(simulationcraftProfile)
   SimcCopyFrameScrollText:HighlightText()
+  ArtifactFrame:Hide()
+end
+
+function SimcTrinketComparison:PrintBiBComparison()
+  -- Basic player info
+  local playerName = UnitName('player')
+  local _, playerClass = UnitClass('player')
+  local playerLevel = UnitLevel('player')
+  local playerRealm = GetRealmName()
+  local playerRegion = regionString[GetCurrentRegion()]
+
+  -- Race info
+  local _, playerRace = UnitRace('player')
+  -- fix some races to match SimC format
+  if playerRace == 'BloodElf' then
+    playerRace = 'Blood Elf'
+  elseif playerRace == 'NightElf' then
+    playerRace = 'Night Elf'
+  elseif playerRace == 'Scourge' then --lulz
+    playerRace = 'Undead'
+  end
+
+  -- Spec info
+  local role, globalSpecID
+  local specId = GetSpecialization()
+  if specId then
+    globalSpecID,_,_,_,_,role = GetSpecializationInfo(specId)
+  end
+  local playerSpec = specNames[ globalSpecID ]
+
+  -- Professions
+  local pid1, pid2 = GetProfessions()
+  local firstProf, firstProfRank, secondProf, secondProfRank, profOneId, profTwoId
+  if pid1 then
+    _,_,firstProfRank,_,_,_,profOneId = GetProfessionInfo(pid1)
+  end
+  if pid2 then
+    secondProf,_,secondProfRank,_,_,_,profTwoId = GetProfessionInfo(pid2)
+  end
+
+  firstProf = profNames[ profOneId ]
+  secondProf = profNames[ profTwoId ]
+
+  local playerProfessions = ''
+  if pid1 or pid2 then
+    playerProfessions = 'professions='
+    if pid1 then
+      playerProfessions = playerProfessions..tokenize(firstProf)..'='..tostring(firstProfRank)..'/'
+    end
+    if pid2 then
+      playerProfessions = playerProfessions..tokenize(secondProf)..'='..tostring(secondProfRank)
+    end
+  else
+    playerProfessions = ''
+  end
+
+  -- Construct SimC-compatible strings from the basic information
+  local player = tokenize(playerClass) .. '="' .. playerName .. '"'
+  playerLevel = 'level=' .. playerLevel
+  playerRace = 'race=' .. tokenize(playerRace)
+  playerRole = 'role=' .. translateRole(role)
+  playerSpec = 'spec=' .. tokenize(playerSpec)
+  playerRealm = 'server=' .. tokenize(playerRealm)
+  playerRegion = 'region=' .. tokenize(playerRegion)
+
+  -- Talents are more involved - method to handle them
+  local playerTalents = CreateSimcTalentString()
+  local playerArtifact = self:GetArtifactString()
+
+  -- Build the output string for the player (not including gear)
+  local simulationcraftProfile = '###########################################################################################\n'
+  simulationcraftProfile = simulationcraftProfile .. '# ATTENTION:\n'
+  simulationcraftProfile = simulationcraftProfile .. '# In order to increase performance the following line disables calculating scaling factors.\n'
+  simulationcraftProfile = simulationcraftProfile .. '# If you wish to calculate them, remove this line.\n'
+  simulationcraftProfile = simulationcraftProfile .. '###########################################################################################\n'
+  simulationcraftProfile = simulationcraftProfile .. 'calculate_scale_factors=0\n'
+  simulationcraftProfile = simulationcraftProfile .. '###########################################################################################\n\n'
+  
+  simulationcraftProfile = simulationcraftProfile .. player .. '\n'
+  simulationcraftProfile = simulationcraftProfile .. playerLevel .. '\n'
+  simulationcraftProfile = simulationcraftProfile .. playerRace .. '\n'
+  simulationcraftProfile = simulationcraftProfile .. playerRegion .. '\n'
+  simulationcraftProfile = simulationcraftProfile .. playerRealm .. '\n'
+  simulationcraftProfile = simulationcraftProfile .. playerRole .. '\n'
+  simulationcraftProfile = simulationcraftProfile .. playerProfessions .. '\n'
+  simulationcraftProfile = simulationcraftProfile .. playerTalents .. '\n'
+  simulationcraftProfile = simulationcraftProfile .. playerSpec .. '\n'
+  if playerArtifact ~= nil then
+    simulationcraftProfile = simulationcraftProfile .. playerArtifact .. '\n'
+  end
+  simulationcraftProfile = simulationcraftProfile .. '\n'
+
+  -- Method that gets gear information
+  local items = SimcTrinketComparison:GetItemStrings()
+
+  -- output gear
+  for slotNum=1, #slotNames do
+    if items[slotNum] then
+      simulationcraftProfile = simulationcraftProfile .. items[slotNum] .. '\n'
+    end
+  end
+
+  -- Item Comparison
+  local items = {}
+  local trinkets = {}
+  local rings = {}
+  local ringsUsed = {}
+  local trinketsUsed = {}
+  local itemNames = {}
+  local trinketNames = {}
+  local ringNames = {}
+  local currentlyEquippedItems = {}
+
+  for slotNum=1, #slotNames do
+    if slotNames[slotNum] ~= 'Finger0Slot' and slotNames[slotNum] ~= 'Finger1Slot' and slotNames[slotNum] ~= 'Trinket0Slot' and slotNames[slotNum] ~= 'Trinket1Slot' then
+      local itemLink = GetInventoryItemLink("player", GetInventorySlotInfo(slotNames[slotNum]))
+      local itemId = GetInventoryItemID("player", GetInventorySlotInfo(slotNames[slotNum]))
+      local _, item, itemName = SimcTrinketComparison:GetItemInfo(itemId, itemLink, 'none', 800, 0)
+      currentlyEquippedItems[slotNum] = item
+      items[slotNum] = {}
+      itemNames[slotNum] = {}
+      items[slotNum][1] = item
+      itemNames[slotNum][1] = itemName
+    elseif slotNames[slotNum] == 'Finger0Slot' then
+      -- first ring
+      local itemLink = GetInventoryItemLink("player", GetInventorySlotInfo(slotNames[slotNum]))
+      local itemId = GetInventoryItemID("player", GetInventorySlotInfo(slotNames[slotNum]))
+      local _, item, itemName = SimcTrinketComparison:GetItemInfo(itemId, itemLink, 'none', 800, 0)
+      currentlyEquippedItems[slotNum] = item
+      rings[1] = item
+      ringNames[1] = itemName
+      -- second ring
+      local itemLink = GetInventoryItemLink("player", GetInventorySlotInfo(slotNames[slotNum + 1]))
+      local itemId = GetInventoryItemID("player", GetInventorySlotInfo(slotNames[slotNum + 1]))
+      local _, item, itemName = SimcTrinketComparison:GetItemInfo(itemId, itemLink, 'none', 800, 0)
+      currentlyEquippedItems[slotNum+1] = item
+      rings[2] = item
+      ringNames[2] = itemName
+    elseif slotNames[slotNum] == 'Trinket0Slot' then
+      -- first trinket
+      local itemLink = GetInventoryItemLink("player", GetInventorySlotInfo(slotNames[slotNum]))
+      local itemId = GetInventoryItemID("player", GetInventorySlotInfo(slotNames[slotNum]))
+      local _, item, itemName = SimcTrinketComparison:GetItemInfo(itemId, itemLink, 'none', 800, 0)
+      currentlyEquippedItems[slotNum] = item
+      trinkets[1] = item
+      trinketNames[1] = itemName
+      -- second trinket
+      local itemLink = GetInventoryItemLink("player", GetInventorySlotInfo(slotNames[slotNum + 1]))
+      local itemId = GetInventoryItemID("player", GetInventorySlotInfo(slotNames[slotNum + 1]))
+      local _, item, itemName = SimcTrinketComparison:GetItemInfo(itemId, itemLink, 'none', 800, 0)
+      currentlyEquippedItems[slotNum+1] = item
+      trinkets[2] = item
+      trinketNames[2] = itemName
+    end
+  end
+
+  simulationcraftProfile = string.gsub(simulationcraftProfile, UnitName('player'), 'CurrentlyEquipped') -- replace name of the player with CurrentlyEquipped
+
+  for slotNum=1, #slotFilter do
+    local a = 2
+    for bag=0, NUM_BAG_SLOTS do
+      for bagSlots=1, GetContainerNumSlots(bag) do
+        local itemLink = GetContainerItemLink(bag, bagSlots)
+        local itemId = GetContainerItemID(bag, bagSlots)
+        local indexOut, item, itemName = SimcTrinketComparison:GetItemInfo(itemId, itemLink, slotFilter[slotNum], 800, a)
+        if (a + 1) == indexOut then
+          items[slotNum][a] = item
+          itemNames[slotNum][a] = itemName
+          a = indexOut
+        end
+        if slotFilter[slotNum] == 'INVTYPE_CHEST' then
+          local itemLink = GetContainerItemLink(bag, bagSlots)
+          local itemId = GetContainerItemID(bag, bagSlots)
+          local indexOut, item, itemName = SimcTrinketComparison:GetItemInfo(itemId, itemLink, 'INVTYPE_ROBE', 800, a)
+          if (a + 1) == indexOut then
+            items[slotNum][a] = item
+            itemNames[slotNum][a] = itemName
+            a = indexOut
+          end
+        end
+      end -- close bagslots loop
+    end --close bags loop
+  end
+  for x=0,1 do
+    local a = 3
+    local filter = 'INVTYPE_FINGER'
+    if x == 1 then
+      filter = 'INVTYPE_TRINKET'
+    end
+    for bag=0, NUM_BAG_SLOTS do
+      for bagSlots=1, GetContainerNumSlots(bag) do
+        local itemLink = GetContainerItemLink(bag, bagSlots)
+        local itemId = GetContainerItemID(bag, bagSlots)
+        local indexOut, item, itemName = SimcTrinketComparison:GetItemInfo(itemId, itemLink, filter, 800, a)
+        if (a + 1) == indexOut then
+          if x == 0 then
+            rings[a] = item
+            ringNames[a] = itemName
+          else
+            trinkets[a] = item
+            trinketNames[a] = itemName          
+          end
+          a = indexOut
+        end
+      end -- close bagslots loop
+    end --close bags loop
+  end
+
+  for i=1, #rings do
+    ringsUsed[i] = {}
+  end
+
+  for i=1, #trinkets do
+    trinketsUsed[i] = {}
+  end
+
+  for i=1, #rings do
+    for j=1, #rings do
+      ringsUsed[i][j] = false
+      ringsUsed[j][i] = false
+    end
+  end
+  ringsUsed[1][2] = true
+  ringsUsed[2][1] = true
+
+  for i=1, #trinkets do
+    for j=1, #trinkets do
+      trinketsUsed[i][j] = false
+      trinketsUsed[j][i] = false
+    end
+  end
+  trinketsUsed[1][2] = true
+  trinketsUsed[2][1] = true
+local combinations = 1
+  for headIndex=1, #items[1] do
+    for neckIndex=1, #items[2] do
+      for shoulderIndex=1, #items[3] do
+        for backIndex=1, #items[4] do
+          for chestIndex=1, #items[5] do
+            for wristIndex=1, #items[6] do
+              for handIndex=1, #items[7] do
+                for waistIndex=1, #items[8] do
+                  for legsIndex=1, #items[9] do
+                    for feetIndex=1, #items[10] do
+                      for ringIndex=1, #rings do
+                        for ringIndex2=1, #rings do
+                          local ring1 = nil
+                          local ring2 = nil
+                          if ringsUsed[ringIndex][ringIndex2] == false and ringsUsed[ringIndex2][ringIndex] == false and ringNames[ringIndex] ~= ringNames[ringIndex2] then
+                            ringsUsed[ringIndex][ringIndex2] = true
+                            ringsUsed[ringIndex2][ringIndex] = true
+                            ring1 = rings[ringIndex]
+                            ring2 = rings[ringIndex2]
+                          end
+
+                          for trinketIndex=1, #trinkets do
+                            for trinketIndex2=1, #trinkets do
+                              local out = 'copy=' .. itemNames[1][headIndex] .. '_'
+                                out = out .. itemNames[2][neckIndex] .. '_'
+                                out = out .. itemNames[3][shoulderIndex] .. '_'
+                                out = out .. itemNames[4][backIndex] .. '_'
+                                out = out .. itemNames[5][chestIndex] .. '_'
+                                out = out .. itemNames[6][wristIndex] .. '_'
+                                out = out .. itemNames[7][handIndex] .. '_'
+                                out = out .. itemNames[8][waistIndex] .. '_'
+                                out = out .. itemNames[9][legsIndex] .. '_'
+                                out = out .. itemNames[10][feetIndex] .. '_'
+                                out = out .. ringNames[ringIndex] .. '_'
+                                out = out .. ringNames[ringIndex2] .. '_'
+                                out = out .. trinketNames[trinketIndex] .. '_'
+                                out = out .. trinketNames[trinketIndex2] .. '\n'
+                              local modified = false
+
+                                if currentlyEquippedItems[1] ~= items[1][headIndex] then
+                                  out = out .. 'head' .. items[1][headIndex] .. '\n'
+                                  modified = true
+                                end
+
+                                if currentlyEquippedItems[2] ~= items[2][neckIndex] then
+                                  out = out .. 'neck' .. items[2][neckIndex] .. '\n'
+                                  modified = true
+                                end
+
+                                if currentlyEquippedItems[3] ~= items[3][shoulderIndex] then
+                                  out = out .. 'shoulders' .. items[3][shoulderIndex] .. '\n'
+                                  modified = true
+                                end
+
+                                if currentlyEquippedItems[4] ~= items[4][backIndex] then
+                                  out = out .. 'back' .. items[4][backIndex] .. '\n'
+                                  modified = true
+                                end
+
+                                if currentlyEquippedItems[5] ~= items[5][chestIndex] then
+                                  out = out .. 'chest' .. items[5][chestIndex] .. '\n'
+                                  modified = true
+                                end
+
+                                if currentlyEquippedItems[6] ~= items[6][wristIndex] then
+                                  out = out .. 'wrists' .. items[6][wristIndex] .. '\n'
+                                  modified = true
+                                end
+
+                                if currentlyEquippedItems[7] ~= items[7][handIndex] then
+                                  out = out .. 'hands' .. items[7][handIndex] .. '\n'
+                                  modified = true
+                                end
+
+                                if currentlyEquippedItems[8] ~= items[8][waistIndex] then
+                                  out = out .. 'waist' .. items[8][waistIndex] .. '\n'
+                                  modified = true
+                                end
+
+                                if currentlyEquippedItems[9] ~= items[9][legsIndex] then
+                                  out = out .. 'legs' .. items[9][legsIndex] .. '\n'
+                                  modified = true
+                                end
+
+                                if currentlyEquippedItems[10] ~= items[10][feetIndex] then
+                                  out = out .. 'feet' .. items[10][feetIndex] .. '\n'
+                                  modified = true
+                                end
+
+                                if currentlyEquippedItems[11] ~= ring1 and ring1 ~= nil then
+                                  out = out .. 'finger1' .. ring1 .. '\n'
+                                  modified = true
+                                end
+
+                                if currentlyEquippedItems[12] ~= ring2 and ring2 ~= nil then
+                                  out = out .. 'finger2' .. ring2 .. '\n'
+                                  modified = true
+                                end
+
+
+                                if trinketsUsed[trinketIndex][trinketIndex2] == false and trinketsUsed[trinketIndex2][trinketIndex] == false and trinketNames[trinketIndex] ~= trinketNames[trinketIndex2] then
+                                  trinketsUsed[trinketIndex][trinketIndex2] = true
+                                  trinketsUsed[trinketIndex2][trinketIndex] = true                                 
+
+                                  if currentlyEquippedItems[13] ~= trinkets[trinketIndex] then
+                                    out = out .. 'trinket1' .. trinkets[trinketIndex] .. '\n'
+                                    modified = true
+                                  end
+
+                                  if currentlyEquippedItems[14] ~= trinkets[trinketIndex2] then
+                                    out = out .. 'trinket2' .. trinkets[trinketIndex2] .. '\n'
+                                    modified = true
+                                  end
+                                end
+                                if modified then
+                                  simulationcraftProfile = simulationcraftProfile .. '\n' .. out .. '\n'
+                                  combinations = combinations + 1
+                                end
+                              end
+                            end
+                              for i=1, #trinkets do
+                              for j=1, #trinkets do
+                                trinketsUsed[i][j] = false
+                                trinketsUsed[j][i] = false
+                              end
+                            end
+                            trinketsUsed[1][2] = true
+                            trinketsUsed[2][1] = true
+                        end
+                          for i=1, #rings do
+                            for j=1, #rings do
+                              ringsUsed[i][j] = false
+                              ringsUsed[j][i] = false
+                            end
+                          end
+                          ringsUsed[1][2] = true
+                          ringsUsed[2][1] = true
+                      end
+                    end
+                  end
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+  print('Possible Combinations: ', combinations)
+
+  -- sanity checks - if there's anything that makes the output completely invalid, punt!
+  if specId == nil then
+    simulationcraftProfile = "Error: You need to pick a spec!"
+  end
+
+  -- show the appropriate frames
+  SimcCopyFrame:Show()
+  SimcCopyFrameScroll:Show()
+  SimcCopyFrameScrollText:Show()
+  SimcCopyFrameScrollText:SetText(simulationcraftProfile)
+  SimcCopyFrameScrollText:HighlightText()
+  ArtifactFrame:Hide()
 end
