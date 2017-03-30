@@ -164,9 +164,9 @@ function SimcTrinketComparison:GetArtifactString()
   local powers = ArtifactUI.GetPowers()
   for i = 1, #powers do
     local power_id = powers[i]
-    local _, _, currentRank, _, bonusRanks = ArtifactUI.GetPowerInfo(power_id)
-    if currentRank > 0 and currentRank - bonusRanks > 0 then
-      str = str .. ':' .. power_id .. ':' .. (currentRank - bonusRanks)
+    local power_info = ArtifactUI.GetPowerInfo(power_id)
+    if power_info.currentRank > 0 and power_info.currentRank - power_info.bonusRanks > 0 then
+      str = str .. ':' .. power_id .. ':' .. (power_info.currentRank - power_info.bonusRanks)
     end
   end
 
@@ -224,7 +224,7 @@ function SimcTrinketComparison:GetItemStrings()
       local rest_offset = OFFSET_BONUS_ID + #bonuses + 1
 
       -- Upgrade level
-      if bit.band(flags, 4) == 4 then
+      if bit.band(flags, 0x4) == 0x4 then
         local upgrade_id = tonumber(itemSplit[rest_offset])
         if self.upgradeTable[upgrade_id] ~= nil and self.upgradeTable[upgrade_id] > 0 then
           simcItemOptions[#simcItemOptions + 1] = 'upgrade=' .. self.upgradeTable[upgrade_id]
@@ -233,10 +233,11 @@ function SimcTrinketComparison:GetItemStrings()
       end
 
       -- Artifacts use this
-      if bit.band(flags, 256) == 256 then
+      if bit.band(flags, 0x100) == 0x100 then
         rest_offset = rest_offset + 1 -- An unknown field
-        if flags == 16777472 then -- 7.2 empowered artifacts (don't know legit way to detect)
-          rest_offset = rest_offset + 1 -- Another unknown field
+        -- 7.2 artifact fixes
+        if bit.band(flags, 0x1000000) == 0x1000000 then
+          rest_offset = rest_offset + 1
         end
         local relic_str = ''
         while rest_offset < #itemSplit do
@@ -266,7 +267,7 @@ function SimcTrinketComparison:GetItemStrings()
       end
 
       -- Some leveling quest items seem to use this, it'll include the drop level of the item
-      if bit.band(flags, 512) == 512 then
+      if bit.band(flags, 0x200) == 0x200 then
         simcItemOptions[#simcItemOptions + 1] = 'drop_level=' .. itemSplit[rest_offset]
         rest_offset = rest_offset + 1
       end
@@ -278,7 +279,7 @@ function SimcTrinketComparison:GetItemStrings()
         if gemLink then
           local gemDetail = string.match(gemLink, "item[%-?%d:]+")
           gems[#gems + 1] = string.match(gemDetail, "item:(%d+):" )
-        elseif flags == 256 then
+        elseif bit.band(flags, 0x100) == 0x100 then
           gems[#gems + 1] = "0"
         end
       end
@@ -532,7 +533,7 @@ function SimcTrinketComparison:PrintSimcProfile(slotName, simcSlotName, equipFil
   SimcCopyFrameScrollText:Show()
   SimcCopyFrameScrollText:SetText(simulationcraftProfile)
   SimcCopyFrameScrollText:HighlightText()
-  ArtifactFrame:Hide()
+  HideUIPanel(ArtifactFrame)
 end
 
 function SimcTrinketComparison:PrintBiBComparison()
@@ -927,5 +928,5 @@ local combinations = 1
   SimcCopyFrameScrollText:Show()
   SimcCopyFrameScrollText:SetText(simulationcraftProfile)
   SimcCopyFrameScrollText:HighlightText()
-  ArtifactFrame:Hide()
+  HideUIPanel(ArtifactFrame)
 end
