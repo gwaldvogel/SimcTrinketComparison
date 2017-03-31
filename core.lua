@@ -11,6 +11,7 @@ local OFFSET_SUFFIX_ID = 7
 local OFFSET_FLAGS = 11
 local OFFSET_BONUS_ID = 13
 local OFFSET_UPGRADE_ID = 14 -- Flags = 0x4
+local DEFAULT_MINIMUM_ITEMLEVEL = 800
 
 -- Artifact stuff (adapted from LibArtifactData [https://www.wowace.com/addons/libartifactdata-1-0/], thanks!)
 local ArtifactUI          = _G.C_ArtifactUI
@@ -27,7 +28,6 @@ local specNames     = SimcTrinketComparison.SpecNames
 local profNames     = SimcTrinketComparison.ProfNames
 local regionString  = SimcTrinketComparison.RegionString
 local artifactTable = SimcTrinketComparison.ArtifactTable
-local ITEMLEVELMIN = 800
 
 -- Most of the guts of this addon were based on a variety of other ones, including
 -- Statslog, AskMrRobot, and BonusScanner. And a bunch of hacking around with AceGUI.
@@ -293,12 +293,20 @@ function SimcTrinketComparison:GetItemStrings()
   return items
 end
 
-function SimcTrinketComparison:PrintTrinketComparison()
-  SimcTrinketComparison:PrintSimcProfile('Trinket', 'trinket', 'INVTYPE_TRINKET')
+function SimcTrinketComparison:PrintTrinketComparison(msg)
+  local minimumItemLevel = DEFAULT_MINIMUM_ITEMLEVEL
+  if msg and type(tonumber(msg))=="number" and tonumber(msg) > 0 then
+    minimumItemLevel = tonumber(msg)
+  end
+  SimcTrinketComparison:PrintSimcProfile('Trinket', 'trinket', 'INVTYPE_TRINKET', minimumItemLevel)
 end
 
-function SimcTrinketComparison:PrintRingComparison()
-  SimcTrinketComparison:PrintSimcProfile('Finger', 'finger', 'INVTYPE_FINGER')
+function SimcTrinketComparison:PrintRingComparison(msg)
+  local minimumItemLevel = DEFAULT_MINIMUM_ITEMLEVEL
+  if msg and type(tonumber(msg))=="number" and tonumber(msg) > 0 then
+    minimumItemLevel = tonumber(msg)
+  end
+  SimcTrinketComparison:PrintSimcProfile('Finger', 'finger', 'INVTYPE_FINGER', minimumItemLevel)
 end
 
 function SimcTrinketComparison:GetItemInfo(itemId, itemLink, equipSlotFilter, iLevelFilter, indexOut)
@@ -359,7 +367,7 @@ function SimcTrinketComparison:GetItemInfo(itemId, itemLink, equipSlotFilter, iL
 end
 
 -- This is the workhorse function that constructs the profile
-function SimcTrinketComparison:PrintSimcProfile(slotName, simcSlotName, equipFilter)
+function SimcTrinketComparison:PrintSimcProfile(slotName, simcSlotName, equipFilter, minimumItemLevel)
   -- Basic player info
   local playerName = UnitName('player')
   local _, playerClass = UnitClass('player')
@@ -470,7 +478,7 @@ function SimcTrinketComparison:PrintSimcProfile(slotName, simcSlotName, equipFil
     for bagSlots=1, GetContainerNumSlots(bag) do
       local itemLink = GetContainerItemLink(bag, bagSlots)
       local itemId = GetContainerItemID(bag, bagSlots)
-      local indexOut, item, itemName = SimcTrinketComparison:GetItemInfo(itemId, itemLink, equipFilter, ITEMLEVELMIN, a)
+      local indexOut, item, itemName = SimcTrinketComparison:GetItemInfo(itemId, itemLink, equipFilter, minimumItemLevel, a)
       if (a + 1) == indexOut then
         items[a] = item
         itemNames[a] = itemName
@@ -483,7 +491,7 @@ function SimcTrinketComparison:PrintSimcProfile(slotName, simcSlotName, equipFil
   for i=0,1 do
     local itemLink = GetInventoryItemLink("player", GetInventorySlotInfo(slotName..i.."Slot"))
     local itemId = GetInventoryItemID("player", GetInventorySlotInfo(slotName..i.."Slot"))
-    local indexOut, item, itemName = SimcTrinketComparison:GetItemInfo(itemId, itemLink, equipFilter, ITEMLEVELMIN, a)
+    local indexOut, item, itemName = SimcTrinketComparison:GetItemInfo(itemId, itemLink, equipFilter, minimumItemLevel, a)
       if (a + 1) == indexOut then
         items[a] = item
         itemNames[a] = itemName
@@ -650,7 +658,7 @@ function SimcTrinketComparison:PrintBiBComparison()
     if slotNames[slotNum] ~= 'Finger0Slot' and slotNames[slotNum] ~= 'Finger1Slot' and slotNames[slotNum] ~= 'Trinket0Slot' and slotNames[slotNum] ~= 'Trinket1Slot' then
       local itemLink = GetInventoryItemLink("player", GetInventorySlotInfo(slotNames[slotNum]))
       local itemId = GetInventoryItemID("player", GetInventorySlotInfo(slotNames[slotNum]))
-      local _, item, itemName = SimcTrinketComparison:GetItemInfo(itemId, itemLink, 'none', ITEMLEVELMIN, 0)
+      local _, item, itemName = SimcTrinketComparison:GetItemInfo(itemId, itemLink, 'none', DEFAULT_MINIMUM_ITEMLEVEL, 0)
       currentlyEquippedItems[slotNum] = item
       items[slotNum] = {}
       itemNames[slotNum] = {}
@@ -660,14 +668,14 @@ function SimcTrinketComparison:PrintBiBComparison()
       -- first ring
       local itemLink = GetInventoryItemLink("player", GetInventorySlotInfo(slotNames[slotNum]))
       local itemId = GetInventoryItemID("player", GetInventorySlotInfo(slotNames[slotNum]))
-      local _, item, itemName = SimcTrinketComparison:GetItemInfo(itemId, itemLink, 'none', ITEMLEVELMIN, 0)
+      local _, item, itemName = SimcTrinketComparison:GetItemInfo(itemId, itemLink, 'none', DEFAULT_MINIMUM_ITEMLEVEL, 0)
       currentlyEquippedItems[slotNum] = item
       rings[1] = item
       ringNames[1] = itemName
       -- second ring
       local itemLink = GetInventoryItemLink("player", GetInventorySlotInfo(slotNames[slotNum + 1]))
       local itemId = GetInventoryItemID("player", GetInventorySlotInfo(slotNames[slotNum + 1]))
-      local _, item, itemName = SimcTrinketComparison:GetItemInfo(itemId, itemLink, 'none', ITEMLEVELMIN, 0)
+      local _, item, itemName = SimcTrinketComparison:GetItemInfo(itemId, itemLink, 'none', DEFAULT_MINIMUM_ITEMLEVEL, 0)
       currentlyEquippedItems[slotNum+1] = item
       rings[2] = item
       ringNames[2] = itemName
@@ -675,14 +683,14 @@ function SimcTrinketComparison:PrintBiBComparison()
       -- first trinket
       local itemLink = GetInventoryItemLink("player", GetInventorySlotInfo(slotNames[slotNum]))
       local itemId = GetInventoryItemID("player", GetInventorySlotInfo(slotNames[slotNum]))
-      local _, item, itemName = SimcTrinketComparison:GetItemInfo(itemId, itemLink, 'none', ITEMLEVELMIN, 0)
+      local _, item, itemName = SimcTrinketComparison:GetItemInfo(itemId, itemLink, 'none', DEFAULT_MINIMUM_ITEMLEVEL, 0)
       currentlyEquippedItems[slotNum] = item
       trinkets[1] = item
       trinketNames[1] = itemName
       -- second trinket
       local itemLink = GetInventoryItemLink("player", GetInventorySlotInfo(slotNames[slotNum + 1]))
       local itemId = GetInventoryItemID("player", GetInventorySlotInfo(slotNames[slotNum + 1]))
-      local _, item, itemName = SimcTrinketComparison:GetItemInfo(itemId, itemLink, 'none', ITEMLEVELMIN, 0)
+      local _, item, itemName = SimcTrinketComparison:GetItemInfo(itemId, itemLink, 'none', DEFAULT_MINIMUM_ITEMLEVEL, 0)
       currentlyEquippedItems[slotNum+1] = item
       trinkets[2] = item
       trinketNames[2] = itemName
@@ -697,7 +705,7 @@ function SimcTrinketComparison:PrintBiBComparison()
       for bagSlots=1, GetContainerNumSlots(bag) do
         local itemLink = GetContainerItemLink(bag, bagSlots)
         local itemId = GetContainerItemID(bag, bagSlots)
-        local indexOut, item, itemName = SimcTrinketComparison:GetItemInfo(itemId, itemLink, slotFilter[slotNum], ITEMLEVELMIN, a)
+        local indexOut, item, itemName = SimcTrinketComparison:GetItemInfo(itemId, itemLink, slotFilter[slotNum], DEFAULT_MINIMUM_ITEMLEVEL, a)
         if (a + 1) == indexOut then
           items[slotNum][a] = item
           itemNames[slotNum][a] = itemName
@@ -706,7 +714,7 @@ function SimcTrinketComparison:PrintBiBComparison()
         if slotFilter[slotNum] == 'INVTYPE_CHEST' then
           local itemLink = GetContainerItemLink(bag, bagSlots)
           local itemId = GetContainerItemID(bag, bagSlots)
-          local indexOut, item, itemName = SimcTrinketComparison:GetItemInfo(itemId, itemLink, 'INVTYPE_ROBE', ITEMLEVELMIN, a)
+          local indexOut, item, itemName = SimcTrinketComparison:GetItemInfo(itemId, itemLink, 'INVTYPE_ROBE', DEFAULT_MINIMUM_ITEMLEVEL, a)
           if (a + 1) == indexOut then
             items[slotNum][a] = item
             itemNames[slotNum][a] = itemName
@@ -726,7 +734,7 @@ function SimcTrinketComparison:PrintBiBComparison()
       for bagSlots=1, GetContainerNumSlots(bag) do
         local itemLink = GetContainerItemLink(bag, bagSlots)
         local itemId = GetContainerItemID(bag, bagSlots)
-        local indexOut, item, itemName = SimcTrinketComparison:GetItemInfo(itemId, itemLink, filter, ITEMLEVELMIN, a)
+        local indexOut, item, itemName = SimcTrinketComparison:GetItemInfo(itemId, itemLink, filter, DEFAULT_MINIMUM_ITEMLEVEL, a)
         if (a + 1) == indexOut then
           if x == 0 then
             rings[a] = item
