@@ -320,7 +320,7 @@ function SimcTrinketComparison:GetItemInfo(itemId, itemLink, equipSlotFilter, iL
     end
     if equipFilter and iLevel >= iLevelFilter then
       item = '=,id=' .. itemId
-      itemName = string.gsub(name, ' ', '') .. iLevel
+      itemName = name .. ' ' .. iLevel
 
       local itemString = string.match(itemLink, "item:([%-?%d:]+)")
       local itemSplit = {}
@@ -518,7 +518,7 @@ function SimcTrinketComparison:PrintSimcProfile(slotName, simcSlotName, equipFil
       for c=1, a do
         if itemsUsed[b][c] == false and itemsUsed[c][b] == false and itemNames[c] ~= itemNames[b] then
           simulationcraftProfile = simulationcraftProfile .. '\n'
-          simulationcraftProfile = simulationcraftProfile .. 'copy=' .. itemNames[b] .. '_' .. itemNames[c] .. '\n'
+          simulationcraftProfile = simulationcraftProfile .. 'copy="' .. itemNames[b] .. '+' .. itemNames[c] .. '"\n'
           simulationcraftProfile = simulationcraftProfile .. simcSlotName .. '1' .. items[b] .. '\n'
           simulationcraftProfile = simulationcraftProfile .. simcSlotName .. '2' .. items[c] .. '\n'
           itemsUsed[b][c] = true
@@ -613,10 +613,8 @@ function SimcTrinketComparison:PrintBiBComparison()
   -- Build the output string for the player (not including gear)
   local simulationcraftProfile = '###########################################################################################\n'
   simulationcraftProfile = simulationcraftProfile .. '# ATTENTION:\n'
-  simulationcraftProfile = simulationcraftProfile .. '# In order to increase performance the following line disables calculating scaling factors.\n'
-  simulationcraftProfile = simulationcraftProfile .. '# If you wish to calculate them, remove this line.\n'
-  simulationcraftProfile = simulationcraftProfile .. '###########################################################################################\n'
-  simulationcraftProfile = simulationcraftProfile .. 'calculate_scale_factors=0\n'
+  simulationcraftProfile = simulationcraftProfile .. '# This output WILL NOT give you a Best in Bags comparison unless you use raidbots.com to sim\n'
+  simulationcraftProfile = simulationcraftProfile .. '# the profile \n'
   simulationcraftProfile = simulationcraftProfile .. '###########################################################################################\n\n'
   
   simulationcraftProfile = simulationcraftProfile .. player .. '\n'
@@ -645,62 +643,19 @@ function SimcTrinketComparison:PrintBiBComparison()
 
   -- Item Comparison
   local items = {}
-  local trinkets = {}
-  local rings = {}
-  local ringsUsed = {}
-  local trinketsUsed = {}
   local itemNames = {}
-  local trinketNames = {}
-  local ringNames = {}
-  local currentlyEquippedItems = {}
 
-  for slotNum=1, #slotNames do
-    if slotNames[slotNum] ~= 'Finger0Slot' and slotNames[slotNum] ~= 'Finger1Slot' and slotNames[slotNum] ~= 'Trinket0Slot' and slotNames[slotNum] ~= 'Trinket1Slot' then
-      local itemLink = GetInventoryItemLink("player", GetInventorySlotInfo(slotNames[slotNum]))
-      local itemId = GetInventoryItemID("player", GetInventorySlotInfo(slotNames[slotNum]))
-      local _, item, itemName = SimcTrinketComparison:GetItemInfo(itemId, itemLink, 'none', DEFAULT_MINIMUM_ITEMLEVEL, 0)
-      currentlyEquippedItems[slotNum] = item
-      items[slotNum] = {}
-      itemNames[slotNum] = {}
-      items[slotNum][1] = item
-      itemNames[slotNum][1] = itemName
-    elseif slotNames[slotNum] == 'Finger0Slot' then
-      -- first ring
-      local itemLink = GetInventoryItemLink("player", GetInventorySlotInfo(slotNames[slotNum]))
-      local itemId = GetInventoryItemID("player", GetInventorySlotInfo(slotNames[slotNum]))
-      local _, item, itemName = SimcTrinketComparison:GetItemInfo(itemId, itemLink, 'none', DEFAULT_MINIMUM_ITEMLEVEL, 0)
-      currentlyEquippedItems[slotNum] = item
-      rings[1] = item
-      ringNames[1] = itemName
-      -- second ring
-      local itemLink = GetInventoryItemLink("player", GetInventorySlotInfo(slotNames[slotNum + 1]))
-      local itemId = GetInventoryItemID("player", GetInventorySlotInfo(slotNames[slotNum + 1]))
-      local _, item, itemName = SimcTrinketComparison:GetItemInfo(itemId, itemLink, 'none', DEFAULT_MINIMUM_ITEMLEVEL, 0)
-      currentlyEquippedItems[slotNum+1] = item
-      rings[2] = item
-      ringNames[2] = itemName
-    elseif slotNames[slotNum] == 'Trinket0Slot' then
-      -- first trinket
-      local itemLink = GetInventoryItemLink("player", GetInventorySlotInfo(slotNames[slotNum]))
-      local itemId = GetInventoryItemID("player", GetInventorySlotInfo(slotNames[slotNum]))
-      local _, item, itemName = SimcTrinketComparison:GetItemInfo(itemId, itemLink, 'none', DEFAULT_MINIMUM_ITEMLEVEL, 0)
-      currentlyEquippedItems[slotNum] = item
-      trinkets[1] = item
-      trinketNames[1] = itemName
-      -- second trinket
-      local itemLink = GetInventoryItemLink("player", GetInventorySlotInfo(slotNames[slotNum + 1]))
-      local itemId = GetInventoryItemID("player", GetInventorySlotInfo(slotNames[slotNum + 1]))
-      local _, item, itemName = SimcTrinketComparison:GetItemInfo(itemId, itemLink, 'none', DEFAULT_MINIMUM_ITEMLEVEL, 0)
-      currentlyEquippedItems[slotNum+1] = item
-      trinkets[2] = item
-      trinketNames[2] = itemName
-    end
-  end
+  items[11] = {}
+  items[12] = {}
+  itemNames[11] = {}
+  itemNames[12] = {}
 
   simulationcraftProfile = string.gsub(simulationcraftProfile, UnitName('player'), 'CurrentlyEquipped') -- replace name of the player with CurrentlyEquipped
 
   for slotNum=1, #slotFilter do
-    local a = 2
+    local a = 1
+    items[slotNum] = {}
+    itemNames[slotNum] = {}
     for bag=0, NUM_BAG_SLOTS do
       for bagSlots=1, GetContainerNumSlots(bag) do
         local itemLink = GetContainerItemLink(bag, bagSlots)
@@ -724,8 +679,9 @@ function SimcTrinketComparison:PrintBiBComparison()
       end -- close bagslots loop
     end --close bags loop
   end
+
   for x=0,1 do
-    local a = 3
+    local a = 1
     local filter = 'INVTYPE_FINGER'
     if x == 1 then
       filter = 'INVTYPE_TRINKET'
@@ -737,11 +693,11 @@ function SimcTrinketComparison:PrintBiBComparison()
         local indexOut, item, itemName = SimcTrinketComparison:GetItemInfo(itemId, itemLink, filter, DEFAULT_MINIMUM_ITEMLEVEL, a)
         if (a + 1) == indexOut then
           if x == 0 then
-            rings[a] = item
-            ringNames[a] = itemName
+            items[11][a] = item
+            items[11][a] = itemName
           else
-            trinkets[a] = item
-            trinketNames[a] = itemName          
+            items[12][a] = item
+            itemNames[12][a] = itemName
           end
           a = indexOut
         end
@@ -749,181 +705,14 @@ function SimcTrinketComparison:PrintBiBComparison()
     end --close bags loop
   end
 
-  for i=1, #rings do
-    ringsUsed[i] = {}
-  end
+  _slotNames = { 'head', 'neck', 'shoulders', 'back', 'chest', 'wrists', 'hands', 'waist', 'legs', 'feet', 'finger1', 'trinket1'}
 
-  for i=1, #trinkets do
-    trinketsUsed[i] = {}
-  end
-
-  for i=1, #rings do
-    for j=1, #rings do
-      ringsUsed[i][j] = false
-      ringsUsed[j][i] = false
+  for slotIdx=1, 12 do
+    for itemIdx=1, #items[slotIdx] do
+      simulationcraftProfile =  simulationcraftProfile .. "\n# " .. itemNames[slotIdx][itemIdx]
+      simulationcraftProfile =  simulationcraftProfile .. "\n# " .. _slotNames[slotIdx] .. items[slotIdx][itemIdx]
     end
   end
-  ringsUsed[1][2] = true
-  ringsUsed[2][1] = true
-
-  for i=1, #trinkets do
-    for j=1, #trinkets do
-      trinketsUsed[i][j] = false
-      trinketsUsed[j][i] = false
-    end
-  end
-  trinketsUsed[1][2] = true
-  trinketsUsed[2][1] = true
-local combinations = 1
-  for headIndex=1, #items[1] do
-    for neckIndex=1, #items[2] do
-      for shoulderIndex=1, #items[3] do
-        for backIndex=1, #items[4] do
-          for chestIndex=1, #items[5] do
-            for wristIndex=1, #items[6] do
-              for handIndex=1, #items[7] do
-                for waistIndex=1, #items[8] do
-                  for legsIndex=1, #items[9] do
-                    for feetIndex=1, #items[10] do
-                      for ringIndex=1, #rings do
-                        for ringIndex2=1, #rings do
-                          local ring1 = nil
-                          local ring2 = nil
-                          if ringsUsed[ringIndex][ringIndex2] == false and ringsUsed[ringIndex2][ringIndex] == false and ringNames[ringIndex] ~= ringNames[ringIndex2] then
-                            ringsUsed[ringIndex][ringIndex2] = true
-                            ringsUsed[ringIndex2][ringIndex] = true
-                            ring1 = rings[ringIndex]
-                            ring2 = rings[ringIndex2]
-                          end
-
-                          for trinketIndex=1, #trinkets do
-                            for trinketIndex2=1, #trinkets do
-                              local out = 'copy=' .. itemNames[1][headIndex] .. '_'
-                                out = out .. itemNames[2][neckIndex] .. '_'
-                                out = out .. itemNames[3][shoulderIndex] .. '_'
-                                out = out .. itemNames[4][backIndex] .. '_'
-                                out = out .. itemNames[5][chestIndex] .. '_'
-                                out = out .. itemNames[6][wristIndex] .. '_'
-                                out = out .. itemNames[7][handIndex] .. '_'
-                                out = out .. itemNames[8][waistIndex] .. '_'
-                                out = out .. itemNames[9][legsIndex] .. '_'
-                                out = out .. itemNames[10][feetIndex] .. '_'
-                                out = out .. ringNames[ringIndex] .. '_'
-                                out = out .. ringNames[ringIndex2] .. '_'
-                                out = out .. trinketNames[trinketIndex] .. '_'
-                                out = out .. trinketNames[trinketIndex2] .. '\n'
-                              local modified = false
-
-                                if currentlyEquippedItems[1] ~= items[1][headIndex] then
-                                  out = out .. 'head' .. items[1][headIndex] .. '\n'
-                                  modified = true
-                                end
-
-                                if currentlyEquippedItems[2] ~= items[2][neckIndex] then
-                                  out = out .. 'neck' .. items[2][neckIndex] .. '\n'
-                                  modified = true
-                                end
-
-                                if currentlyEquippedItems[3] ~= items[3][shoulderIndex] then
-                                  out = out .. 'shoulders' .. items[3][shoulderIndex] .. '\n'
-                                  modified = true
-                                end
-
-                                if currentlyEquippedItems[4] ~= items[4][backIndex] then
-                                  out = out .. 'back' .. items[4][backIndex] .. '\n'
-                                  modified = true
-                                end
-
-                                if currentlyEquippedItems[5] ~= items[5][chestIndex] then
-                                  out = out .. 'chest' .. items[5][chestIndex] .. '\n'
-                                  modified = true
-                                end
-
-                                if currentlyEquippedItems[6] ~= items[6][wristIndex] then
-                                  out = out .. 'wrists' .. items[6][wristIndex] .. '\n'
-                                  modified = true
-                                end
-
-                                if currentlyEquippedItems[7] ~= items[7][handIndex] then
-                                  out = out .. 'hands' .. items[7][handIndex] .. '\n'
-                                  modified = true
-                                end
-
-                                if currentlyEquippedItems[8] ~= items[8][waistIndex] then
-                                  out = out .. 'waist' .. items[8][waistIndex] .. '\n'
-                                  modified = true
-                                end
-
-                                if currentlyEquippedItems[9] ~= items[9][legsIndex] then
-                                  out = out .. 'legs' .. items[9][legsIndex] .. '\n'
-                                  modified = true
-                                end
-
-                                if currentlyEquippedItems[10] ~= items[10][feetIndex] then
-                                  out = out .. 'feet' .. items[10][feetIndex] .. '\n'
-                                  modified = true
-                                end
-
-                                if currentlyEquippedItems[11] ~= ring1 and ring1 ~= nil then
-                                  out = out .. 'finger1' .. ring1 .. '\n'
-                                  modified = true
-                                end
-
-                                if currentlyEquippedItems[12] ~= ring2 and ring2 ~= nil then
-                                  out = out .. 'finger2' .. ring2 .. '\n'
-                                  modified = true
-                                end
-
-
-                                if trinketsUsed[trinketIndex][trinketIndex2] == false and trinketsUsed[trinketIndex2][trinketIndex] == false and trinketNames[trinketIndex] ~= trinketNames[trinketIndex2] then
-                                  trinketsUsed[trinketIndex][trinketIndex2] = true
-                                  trinketsUsed[trinketIndex2][trinketIndex] = true                                 
-
-                                  if currentlyEquippedItems[13] ~= trinkets[trinketIndex] then
-                                    out = out .. 'trinket1' .. trinkets[trinketIndex] .. '\n'
-                                    modified = true
-                                  end
-
-                                  if currentlyEquippedItems[14] ~= trinkets[trinketIndex2] then
-                                    out = out .. 'trinket2' .. trinkets[trinketIndex2] .. '\n'
-                                    modified = true
-                                  end
-                                end
-                                if modified then
-                                  simulationcraftProfile = simulationcraftProfile .. '\n' .. out .. '\n'
-                                  combinations = combinations + 1
-                                end
-                              end
-                            end
-                              for i=1, #trinkets do
-                              for j=1, #trinkets do
-                                trinketsUsed[i][j] = false
-                                trinketsUsed[j][i] = false
-                              end
-                            end
-                            trinketsUsed[1][2] = true
-                            trinketsUsed[2][1] = true
-                        end
-                          for i=1, #rings do
-                            for j=1, #rings do
-                              ringsUsed[i][j] = false
-                              ringsUsed[j][i] = false
-                            end
-                          end
-                          ringsUsed[1][2] = true
-                          ringsUsed[2][1] = true
-                      end
-                    end
-                  end
-                end
-              end
-            end
-          end
-        end
-      end
-    end
-  end
-  print('Possible Combinations: ', combinations)
 
   -- sanity checks - if there's anything that makes the output completely invalid, punt!
   if specId == nil then
